@@ -39,6 +39,40 @@
             </div>
         </section>
 
+        <!-- Location Settings -->
+        <section class="location-settings">
+            <h3>Junction Location (This Device)</h3>
+            <div class="location-status" id="locationStatus">
+                <strong>Current Location:</strong> <span id="currentLocation">40.758000, -73.985500 (Default - NYC)</span>
+            </div>
+            <div class="location-controls">
+                <button id="useGpsBtn" class="location-btn">
+                    📍 Use My GPS Location
+                </button>
+                <button id="useManualBtn" class="location-btn">
+                    ✏️ Enter Location Manually
+                </button>
+            </div>
+            <div class="manual-location hidden" id="manualLocationForm">
+                <div class="input-group">
+                    <label for="manualLat">Latitude:</label>
+                    <input type="number" id="manualLat" step="0.000001" placeholder="e.g., 40.758000">
+                </div>
+                <div class="input-group">
+                    <label for="manualLng">Longitude:</label>
+                    <input type="number" id="manualLng" step="0.000001" placeholder="e.g., -73.985500">
+                </div>
+                <button id="setLocationBtn" class="control-btn auto-btn">
+                    ✓ Set as Junction Location
+                </button>
+                <p class="help-text">
+                    Get coordinates from: 
+                    <a href="https://www.google.com/maps" target="_blank" style="color: var(--color-primary);">Google Maps</a>
+                    (right-click location → coordinates)
+                </p>
+            </div>
+        </section>
+
         <!-- Junction Layout -->
         <section class="junction-layout">
             <!-- North Signal (Main/Bigger) -->

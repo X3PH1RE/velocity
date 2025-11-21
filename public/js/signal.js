@@ -65,6 +65,16 @@ const elements = {
     triggerEmergencyBtn: document.getElementById('triggerEmergencyBtn'),
     resumeAutoBtn: document.getElementById('resumeAutoBtn'),
     
+    // Location settings
+    locationStatus: document.getElementById('locationStatus'),
+    currentLocation: document.getElementById('currentLocation'),
+    useGpsBtn: document.getElementById('useGpsBtn'),
+    useManualBtn: document.getElementById('useManualBtn'),
+    manualLocationForm: document.getElementById('manualLocationForm'),
+    manualLat: document.getElementById('manualLat'),
+    manualLng: document.getElementById('manualLng'),
+    setLocationBtn: document.getElementById('setLocationBtn'),
+    
     // Event log
     eventLog: document.getElementById('eventLog'),
     clearLogBtn: document.getElementById('clearLogBtn'),
@@ -322,6 +332,9 @@ function handleGpsPosition(position) {
     
     console.log('Laptop GPS:', lat, lng, '±' + accuracy + 'm');
     
+    // Update display
+    updateLocationDisplay(lat, lng, `GPS (±${accuracy}m)`);
+    
     // Send location to server (update junction location)
     const now = getCurrentTimestamp();
     if (now - state.lastLocationUpdate > 2000) {  // Update every 2 seconds
@@ -335,8 +348,45 @@ function handleGpsPosition(position) {
             
             state.lastLocationUpdate = now;
             console.log('📍 Junction location updated:', lat, lng);
+            addLog(`📍 Location updated: ${lat.toFixed(6)}, ${lng.toFixed(6)}`, 'success');
         }
     }
+}
+
+function updateLocationDisplay(lat, lng, source) {
+    elements.currentLocation.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)} (${source})`;
+}
+
+function sendManualLocation(lat, lng) {
+    if (!state.connected) {
+        addLog('✗ Cannot update location: Not connected', 'error');
+        return;
+    }
+    
+    if (isNaN(lat) || isNaN(lng)) {
+        addLog('✗ Invalid coordinates', 'error');
+        return;
+    }
+    
+    // Validate coordinates
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        addLog('✗ Invalid coordinates (lat: -90 to 90, lng: -180 to 180)', 'error');
+        return;
+    }
+    
+    // Update display
+    updateLocationDisplay(lat, lng, 'Manual');
+    
+    // Send to server
+    state.socket.emit('update_junction_location', {
+        junctionId: state.currentJunction,
+        lat: lat,
+        lng: lng,
+        deviceType: 'signal'
+    });
+    
+    addLog(`✓ Junction location set manually: ${lat.toFixed(6)}, ${lng.toFixed(6)}`, 'success');
+    addLog('📱 Mobile devices will now use this location for proximity detection', 'info');
 }
 
 function handleGpsError(error) {
@@ -420,6 +470,23 @@ function setupEventListeners() {
         sendManualOverride('auto_cycle');
     });
     
+    // Location controls
+    elements.useGpsBtn.addEventListener('click', () => {
+        startGpsTracking();
+        elements.manualLocationForm.classList.add('hidden');
+    });
+    
+    elements.useManualBtn.addEventListener('click', () => {
+        elements.manualLocationForm.classList.toggle('hidden');
+    });
+    
+    elements.setLocationBtn.addEventListener('click', () => {
+        const lat = parseFloat(elements.manualLat.value);
+        const lng = parseFloat(elements.manualLng.value);
+        sendManualLocation(lat, lng);
+        elements.manualLocationForm.classList.add('hidden');
+    });
+    
     // Clear log
     elements.clearLogBtn.addEventListener('click', () => {
         elements.eventLog.innerHTML = '';
@@ -456,16 +523,15 @@ function init() {
     
     // Display mode information
     addLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'info');
-    addLog('📍 MODE: Proximity-based (GPS optional)', 'success');
-    addLog('🚑 Manual triggers work anytime!', 'info');
-    addLog('📡 GPS: Attempting to get laptop location...', 'info');
-    addLog('💡 If GPS fails: System uses default location - Manual mode still works!', 'info');
+    addLog('📍 Junction Location Setup Required!', 'success');
+    addLog('Choose one:', 'info');
+    addLog('  1️⃣ Click "Use My GPS Location" (if GPS available)', 'info');
+    addLog('  2️⃣ Click "Enter Location Manually" (recommended for laptops)', 'info');
+    addLog('💡 Get coordinates from Google Maps: right-click → coordinates', 'info');
     addLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'info');
     
-    // Try GPS but don't block if it fails
-    setTimeout(() => {
-        startGpsTracking();
-    }, 1000);
+    // Don't auto-start GPS - let user choose
+    addLog('⚠️ Using default NYC location until you set your location', 'warning');
     
     console.log('Initialization complete');
 }
