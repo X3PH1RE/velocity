@@ -246,7 +246,7 @@ def emergency_override(junction_id, vehicle_id):
         }
         
         logger.info(f"Broadcast data: {broadcast_data}")
-        socketio.emit('junction_update', broadcast_data, broadcast=True)
+        socketio.emit('junction_update', broadcast_data)  # broadcast is default behavior
         logger.info(f"✓ Emergency broadcast sent")
         
         # Emergency mode stays active until vehicle exits geofence
