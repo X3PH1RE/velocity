@@ -27,7 +27,13 @@ const state = {
         west: 'RED'
     },
     currentSignal: 'north',
-    socket: null
+    socket: null,
+    
+    // GPS state for laptop location tracking
+    gpsActive: false,
+    gpsWatchId: null,
+    currentPosition: null,
+    lastLocationUpdate: 0
 };
 
 // ==============================================================================
@@ -267,6 +273,91 @@ function sendManualOverride(action) {
 }
 
 // ==============================================================================
+// GPS Location Tracking (Laptop becomes the junction)
+// ==============================================================================
+
+function handleGpsPosition(position) {
+    state.currentPosition = position;
+    
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
+    const accuracy = Math.round(position.coords.accuracy);
+    
+    console.log('Laptop GPS:', lat, lng, '±' + accuracy + 'm');
+    
+    // Send location to server (update junction location)
+    const now = getCurrentTimestamp();
+    if (now - state.lastLocationUpdate > 2000) {  // Update every 2 seconds
+        if (state.socket && state.connected) {
+            state.socket.emit('update_junction_location', {
+                junctionId: state.currentJunction,
+                lat: lat,
+                lng: lng,
+                deviceType: 'signal'
+            });
+            
+            state.lastLocationUpdate = now;
+            console.log('📍 Junction location updated:', lat, lng);
+        }
+    }
+}
+
+function handleGpsError(error) {
+    let message = 'GPS Error: ';
+    
+    switch(error.code) {
+        case error.PERMISSION_DENIED:
+            message += 'Location permission denied. Please enable location access.';
+            break;
+        case error.POSITION_UNAVAILABLE:
+            message += 'Location information unavailable.';
+            break;
+        case error.TIMEOUT:
+            message += 'Location request timed out.';
+            break;
+        default:
+            message += 'Unknown error occurred.';
+    }
+    
+    console.error('GPS error:', error);
+    addLog(message, 'error');
+}
+
+function startGpsTracking() {
+    if (!navigator.geolocation) {
+        addLog('✗ Geolocation not supported by this browser', 'error');
+        return;
+    }
+    
+    addLog('📍 Starting GPS tracking (this device becomes the junction)...', 'info');
+    
+    const options = {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+    };
+    
+    state.gpsWatchId = navigator.geolocation.watchPosition(
+        handleGpsPosition,
+        handleGpsError,
+        options
+    );
+    
+    state.gpsActive = true;
+    addLog('✓ GPS tracking started - Broadcasting location to vehicles', 'success');
+}
+
+function stopGpsTracking() {
+    if (state.gpsWatchId !== null) {
+        navigator.geolocation.clearWatch(state.gpsWatchId);
+        state.gpsWatchId = null;
+    }
+    
+    state.gpsActive = false;
+    addLog('GPS tracking stopped', 'info');
+}
+
+// ==============================================================================
 // Event Listeners
 // ==============================================================================
 
@@ -314,6 +405,17 @@ function init() {
     addLog(`Server: ${CONFIG.serverUrl}`, 'info');
     addLog(`Junction: ${state.currentJunction}`, 'info');
     addLog('Waiting for auto cycle to begin...', 'info');
+    
+    // Start GPS tracking automatically (laptop becomes the junction)
+    addLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'info');
+    addLog('📍 PROXIMITY MODE: This device location is the junction', 'success');
+    addLog('🚑 When mobile device comes within 1m, emergency triggers!', 'info');
+    addLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'info');
+    
+    // Start GPS tracking after a short delay to let page load
+    setTimeout(() => {
+        startGpsTracking();
+    }, 1000);
     
     console.log('Initialization complete');
 }

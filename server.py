@@ -20,14 +20,15 @@ import os
 HOST = '0.0.0.0'  # Bind to all interfaces for LAN testing
 PORT = int(os.environ.get('PORT', 5000))  # Use environment PORT or default 5000
 
-# Junction configuration (hardcoded for prototype)
-# In a real system, these would come from a database
+# Junction configuration (dynamic - updated by device locations)
+# In this setup, the laptop's location becomes the junction
 JUNCTIONS_CONFIG = {
     "junction1": {
-        "name": "Main St & 5th Ave",
-        "lat": 40.7580,  # Example coordinates (Times Square, NYC)
-        "lng": -73.9855,
-        "geofence_radius_m": 50  # 50 meters default
+        "name": "Dynamic Junction",
+        "lat": 40.7580,  # Default - will be updated by laptop GPS
+        "lng": -73.9855,  # Default - will be updated by laptop GPS
+        "geofence_radius_m": 1,  # 1 meter for device-to-device proximity
+        "last_updated": None
     }
 }
 
@@ -482,6 +483,54 @@ def handle_request_state():
             "timestamp": current_time_ms(),
             "junctions": junctions
         })
+
+
+@socketio.on('update_junction_location')
+def handle_update_junction_location(data):
+    """
+    Update junction location based on device GPS (laptop becomes the junction)
+    
+    Expected payload:
+    {
+        "junctionId": "junction1",
+        "lat": 40.7580,
+        "lng": -73.9855,
+        "deviceType": "signal"
+    }
+    """
+    try:
+        junction_id = data.get('junctionId')
+        lat = data.get('lat')
+        lng = data.get('lng')
+        device_type = data.get('deviceType', 'unknown')
+        
+        if not junction_id or lat is None or lng is None:
+            emit('error', {"message": "junctionId, lat, and lng required"})
+            return
+        
+        if junction_id not in junctions:
+            emit('error', {"message": f"Unknown junction: {junction_id}"})
+            return
+        
+        with state_lock:
+            # Update junction location
+            junctions[junction_id]["lat"] = lat
+            junctions[junction_id]["lng"] = lng
+            junctions[junction_id]["last_updated"] = current_time_ms()
+            
+            logger.info(f"Junction {junction_id} location updated: {lat}, {lng} (from {device_type})")
+        
+        # Broadcast updated location to all clients (especially vehicles)
+        socketio.emit('junction_location_updated', {
+            "junctionId": junction_id,
+            "lat": lat,
+            "lng": lng,
+            "timestamp": current_time_ms()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error updating junction location: {str(e)}")
+        emit('error', {"message": str(e)})
 
 
 # ==============================================================================

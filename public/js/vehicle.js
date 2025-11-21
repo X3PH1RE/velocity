@@ -11,13 +11,13 @@ const CONFIG = {
     // Server connection (auto-detects from current location)
     serverUrl: window.location.origin,
     
-    // Junction coordinates (hardcoded for prototype)
+    // Junction coordinates (dynamic - updated by laptop location)
     junctions: {
         "junction1": {
-            name: "Main St & 5th Ave",
-            lat: 40.7580,  // Times Square coordinates
+            name: "Laptop Device (Junction)",
+            lat: 40.7580,  // Will be updated by laptop GPS
             lng: -73.9855,
-            geofenceRadius: 50  // meters
+            geofenceRadius: 1  // 1 meter for device-to-device proximity
         }
     },
     
@@ -233,6 +233,36 @@ function initSocket() {
         console.log('Signal change:', data);
         const msg = `Traffic light ${data.junctionId}: ${data.state} (triggered by ${data.triggeredBy || 'unknown'})`;
         addLog(msg, 'info');
+    });
+    
+    // Junction location updated by laptop
+    state.socket.on('junction_location_updated', (data) => {
+        console.log('Junction location updated:', data);
+        
+        const junctionId = data.junctionId;
+        if (CONFIG.junctions[junctionId]) {
+            CONFIG.junctions[junctionId].lat = data.lat;
+            CONFIG.junctions[junctionId].lng = data.lng;
+            
+            addLog(`📍 Laptop location updated: ${data.lat.toFixed(6)}, ${data.lng.toFixed(6)}`, 'info');
+            
+            // Update junction location display
+            const junction = CONFIG.junctions[state.currentJunction];
+            elements.junctionLocation.textContent = `${junction.lat.toFixed(6)}, ${junction.lng.toFixed(6)} (radius: ${junction.geofenceRadius}m)`;
+            
+            // Update map if available
+            if (state.map && state.junctionMarker) {
+                state.junctionMarker.setLatLng([data.lat, data.lng]);
+                if (state.geofenceCircle) {
+                    state.geofenceCircle.setLatLng([data.lat, data.lng]);
+                }
+            }
+            
+            // Recheck geofence if GPS is active
+            if (state.currentPosition) {
+                checkGeofence(state.currentPosition);
+            }
+        }
     });
     
     // Error handling
@@ -593,6 +623,11 @@ function init() {
     
     addLog('🚀 Velocity Vehicle Simulator started', 'success');
     addLog(`Server: ${CONFIG.serverUrl}`, 'info');
+    addLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'info');
+    addLog('📍 PROXIMITY MODE: Junction = Laptop Location', 'success');
+    addLog('🎯 Geofence Radius: 1 meter (device-to-device)', 'info');
+    addLog('🚑 Auto-trigger when within 1m of laptop!', 'info');
+    addLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'info');
     
     console.log('Initialization complete');
 }

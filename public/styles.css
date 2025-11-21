@@ -985,6 +985,23 @@ select:focus-visible {
     color: var(--color-green);
 }
 
+.proximity-info {
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--color-dark-border);
+}
+
+.proximity-badge {
+    display: inline-block;
+    padding: var(--spacing-sm) var(--spacing-lg);
+    background: linear-gradient(135deg, var(--color-success) 0%, #15803d 100%);
+    color: white;
+    border-radius: var(--radius-full);
+    font-size: 0.875rem;
+    font-weight: 600;
+    box-shadow: var(--shadow-md);
+}
+
 /* Junction Layout Container */
 .junction-layout {
     position: relative;
