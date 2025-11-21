@@ -341,37 +341,48 @@ function handleGpsPosition(position) {
 
 function handleGpsError(error) {
     let message = 'GPS Error: ';
+    let solution = '';
     
     switch(error.code) {
         case error.PERMISSION_DENIED:
-            message += 'Location permission denied. Please enable location access.';
+            message += 'Location permission denied.';
+            solution = '💡 Click Allow when browser asks for location, or use Manual trigger mode.';
             break;
         case error.POSITION_UNAVAILABLE:
             message += 'Location information unavailable.';
+            solution = '💡 GPS may not work on this device. System will use default location.';
             break;
         case error.TIMEOUT:
             message += 'Location request timed out.';
+            solution = '💡 Laptop GPS is often weak/unavailable. System will use default location - Manual trigger still works!';
             break;
         default:
             message += 'Unknown error occurred.';
     }
     
     console.error('GPS error:', error);
-    addLog(message, 'error');
+    addLog(message, 'warning');
+    addLog(solution, 'info');
+    addLog('✅ Junction is running! Manual triggers work without GPS.', 'success');
+    
+    // Stop trying GPS
+    stopGpsTracking();
 }
 
 function startGpsTracking() {
     if (!navigator.geolocation) {
         addLog('✗ Geolocation not supported by this browser', 'error');
+        addLog('💡 System will use default location - Manual trigger still works!', 'info');
         return;
     }
     
     addLog('📍 Starting GPS tracking (this device becomes the junction)...', 'info');
+    addLog('⏳ Waiting for GPS lock (may take 30-60 seconds)...', 'info');
     
     const options = {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
+        enableHighAccuracy: false,  // Changed to false for faster response
+        timeout: 30000,  // Increased to 30 seconds
+        maximumAge: 60000  // Accept cached position up to 60 seconds old
     };
     
     state.gpsWatchId = navigator.geolocation.watchPosition(
@@ -381,7 +392,7 @@ function startGpsTracking() {
     );
     
     state.gpsActive = true;
-    addLog('✓ GPS tracking started - Broadcasting location to vehicles', 'success');
+    addLog('✓ GPS tracking started - Waiting for location...', 'success');
 }
 
 function stopGpsTracking() {
@@ -443,13 +454,15 @@ function init() {
     addLog(`Junction: ${state.currentJunction}`, 'info');
     addLog('Waiting for auto cycle to begin...', 'info');
     
-    // Start GPS tracking automatically (laptop becomes the junction)
+    // Display mode information
     addLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'info');
-    addLog('📍 PROXIMITY MODE: This device location is the junction', 'success');
-    addLog('🚑 When mobile device comes within 1m, emergency triggers!', 'info');
+    addLog('📍 MODE: Proximity-based (GPS optional)', 'success');
+    addLog('🚑 Manual triggers work anytime!', 'info');
+    addLog('📡 GPS: Attempting to get laptop location...', 'info');
+    addLog('💡 If GPS fails: System uses default location - Manual mode still works!', 'info');
     addLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'info');
     
-    // Start GPS tracking after a short delay to let page load
+    // Try GPS but don't block if it fails
     setTimeout(() => {
         startGpsTracking();
     }, 1000);

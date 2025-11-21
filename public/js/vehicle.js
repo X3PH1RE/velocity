@@ -430,26 +430,44 @@ function handleGpsPosition(position) {
  */
 function handleGpsError(error) {
     let message = 'GPS Error: ';
+    let solution = '';
     
     switch(error.code) {
         case error.PERMISSION_DENIED:
-            message += 'Location permission denied. Please enable location access in your browser settings.';
+            message += 'Location permission denied.';
+            solution = '📱 Phone via HTTP (192.168.x.x)? GPS blocked by browser. Deploy to Railway for HTTPS, or use Manual mode!';
             break;
         case error.POSITION_UNAVAILABLE:
-            message += 'Location information unavailable. Make sure GPS is enabled.';
+            message += 'Location information unavailable.';
+            solution = '💡 GPS signal may be weak. Try going outdoors, or use Manual mode.';
             break;
         case error.TIMEOUT:
             message += 'Location request timed out.';
+            solution = '⏰ GPS taking too long to lock. Try Manual mode instead - works perfectly!';
             break;
         default:
             message += 'Unknown error occurred.';
+            solution = '💡 GPS not working. Use Manual mode to test the system!';
     }
     
     console.error('GPS error:', error);
     elements.gpsStatus.textContent = '✗ ' + message;
     elements.gpsStatus.className = 'gps-status error';
     addLog(message, 'error');
-    updateStatus('error', 'GPS Error');
+    addLog(solution, 'warning');
+    addLog('✅ Switch to MANUAL mode - works without GPS!', 'success');
+    updateStatus('error', 'GPS Error - Use Manual Mode');
+    
+    // Stop GPS and switch to manual mode
+    stopGpsTracking();
+    
+    // Auto-switch to manual mode
+    setTimeout(() => {
+        if (state.mode === 'auto') {
+            switchToManualMode();
+            addLog('→ Auto-switched to Manual mode', 'info');
+        }
+    }, 2000);
 }
 
 /**
@@ -458,18 +476,21 @@ function handleGpsError(error) {
 function startGpsTracking() {
     if (!navigator.geolocation) {
         addLog('✗ Geolocation not supported by this browser', 'error');
+        addLog('💡 Use Manual mode instead - works without GPS!', 'info');
         elements.gpsStatus.textContent = '✗ Geolocation not supported';
         return;
     }
     
     addLog('Starting GPS tracking...', 'info');
+    addLog('⏳ Waiting for GPS lock (may take 30-60 seconds)...', 'info');
+    addLog('📱 If on phone via HTTP: GPS won\'t work. Use Manual mode or deploy to get HTTPS.', 'warning');
     elements.gpsStatus.textContent = 'Starting GPS...';
     
-    // Request high accuracy GPS
+    // Request GPS with more lenient settings
     const options = {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
+        enableHighAccuracy: false,  // Changed to false for compatibility
+        timeout: 30000,  // Increased to 30 seconds
+        maximumAge: 60000  // Accept cached position
     };
     
     state.gpsWatchId = navigator.geolocation.watchPosition(
@@ -661,9 +682,10 @@ function init() {
     addLog('🚀 Velocity Vehicle Simulator started', 'success');
     addLog(`Server: ${CONFIG.serverUrl}`, 'info');
     addLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'info');
-    addLog('📍 PROXIMITY MODE: Junction = Laptop Location', 'success');
-    addLog('🎯 Geofence Radius: 1 meter (device-to-device)', 'info');
-    addLog('🚑 Auto-trigger when within 1m of laptop!', 'info');
+    addLog('✅ MANUAL MODE: Tap button to trigger (works always!)', 'success');
+    addLog('📍 AUTO MODE: GPS-based proximity (HTTPS required on phone)', 'info');
+    addLog('💡 On phone via IP? GPS blocked - Use Manual mode!', 'warning');
+    addLog('🚀 For GPS on phone: Deploy to Railway for automatic HTTPS', 'info');
     addLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'info');
     
     console.log('Initialization complete');
