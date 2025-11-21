@@ -33,7 +33,7 @@ JUNCTIONS_CONFIG = {
 }
 
 # Traffic light timing configuration (milliseconds)
-GREEN_DURATION_MS = 5000  # Default GREEN duration
+EMERGENCY_DURATION_MS = 3000  # Emergency GREEN duration (3 seconds - quick for testing)
 YELLOW_DURATION_MS = 1000  # YELLOW transition duration
 TRIGGER_EXTENSION_MS = 2000  # Extension when already GREEN
 
@@ -246,11 +246,10 @@ def emergency_override(junction_id, vehicle_id):
         
         # Return to auto cycle after emergency duration
         def end_emergency():
-            with state_lock:
-                logger.info(f"Junction {junction_id}: Ending emergency mode")
-                start_auto_cycle(junction_id)
+            logger.info(f"Junction {junction_id}: Ending emergency mode, returning to auto cycle")
+            start_auto_cycle(junction_id)
         
-        timer = threading.Timer(GREEN_DURATION_MS / 1000.0, end_emergency)
+        timer = threading.Timer(EMERGENCY_DURATION_MS / 1000.0, end_emergency)
         timer.start()
         active_timers[f"{junction_id}_emergency"] = timer
         
@@ -378,11 +377,19 @@ def handle_connect():
     logger.info(f"Client connected: {request.sid}")
     
     # Send current state to the newly connected client
+    # Make a copy of junctions to avoid serialization issues
     with state_lock:
+        junctions_copy = {}
+        for jid, jdata in junctions.items():
+            junctions_copy[jid] = dict(jdata)  # Create shallow copy
+        
         emit('state_snapshot', {
             "timestamp": current_time_ms(),
-            "junctions": junctions
+            "junctions": junctions_copy,
+            "success": True
         })
+    
+    logger.info(f"State snapshot sent to {request.sid}")
 
 
 @socketio.on('disconnect')
@@ -478,11 +485,25 @@ def handle_manual_override(data):
 @socketio.on('request_state')
 def handle_request_state():
     """Handle explicit state request from client"""
+    logger.info(f"State requested by {request.sid}")
+    
+    # Make a copy to avoid serialization issues
     with state_lock:
+        junctions_copy = {}
+        for jid, jdata in junctions.items():
+            junctions_copy[jid] = dict(jdata)
+        
         emit('state_snapshot', {
             "timestamp": current_time_ms(),
-            "junctions": junctions
+            "junctions": junctions_copy,
+            "success": True
         })
+
+
+@socketio.on('ping')
+def handle_ping():
+    """Handle ping from client to keep connection alive"""
+    emit('pong', {"timestamp": current_time_ms()})
 
 
 @socketio.on('update_junction_location')

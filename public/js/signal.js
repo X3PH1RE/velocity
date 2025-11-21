@@ -33,7 +33,11 @@ const state = {
     gpsActive: false,
     gpsWatchId: null,
     currentPosition: null,
-    lastLocationUpdate: 0
+    lastLocationUpdate: 0,
+    
+    // Keepalive
+    pingInterval: null,
+    reconnectAttempts: 0
 };
 
 // ==============================================================================
@@ -179,22 +183,55 @@ function updateCurrentSignal(signalDirection) {
 // ==============================================================================
 
 function initSocket() {
-    state.socket = io(CONFIG.serverUrl);
+    state.socket = io(CONFIG.serverUrl, {
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        reconnectionAttempts: Infinity
+    });
     
     // Connection events
     state.socket.on('connect', () => {
         console.log('Connected to server');
         updateConnectionStatus(true);
+        state.reconnectAttempts = 0;
         addLog('✓ Connected to junction server', 'success');
         
         // Request current state
         state.socket.emit('request_state');
+        
+        // Start keepalive ping
+        if (state.pingInterval) clearInterval(state.pingInterval);
+        state.pingInterval = setInterval(() => {
+            if (state.connected) {
+                state.socket.emit('ping');
+            }
+        }, 10000); // Ping every 10 seconds
     });
     
-    state.socket.on('disconnect', () => {
-        console.log('Disconnected from server');
+    state.socket.on('disconnect', (reason) => {
+        console.log('Disconnected from server:', reason);
         updateConnectionStatus(false);
-        addLog('✗ Disconnected from server', 'error');
+        addLog(`✗ Disconnected: ${reason}`, 'error');
+        
+        // Clear ping interval
+        if (state.pingInterval) {
+            clearInterval(state.pingInterval);
+            state.pingInterval = null;
+        }
+    });
+    
+    state.socket.on('connect_error', (error) => {
+        state.reconnectAttempts++;
+        console.error('Connection error:', error);
+        if (state.reconnectAttempts % 5 === 0) {
+            addLog(`Reconnection attempt ${state.reconnectAttempts}...`, 'warning');
+        }
+    });
+    
+    state.socket.on('pong', (data) => {
+        // Keepalive response
+        console.log('Ping OK');
     });
     
     // State snapshot from server
