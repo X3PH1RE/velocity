@@ -33,7 +33,7 @@ JUNCTIONS_CONFIG = {
 }
 
 # Traffic light timing configuration (milliseconds)
-EMERGENCY_DURATION_MS = 3000  # Emergency GREEN duration (3 seconds - quick for testing)
+EMERGENCY_DURATION_MS = 5000  # Emergency GREEN duration (3 seconds - quick for testing)
 YELLOW_DURATION_MS = 1000  # YELLOW transition duration
 TRIGGER_EXTENSION_MS = 2000  # Extension when already GREEN
 
