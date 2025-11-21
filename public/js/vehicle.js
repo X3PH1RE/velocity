@@ -46,6 +46,7 @@ const state = {
     gpsWatchId: null,
     currentPosition: null,
     lastTriggerTime: 0,
+    lastLocationUpdate: 0,
     wasInsideGeofence: false,
     
     // Map state
@@ -327,6 +328,7 @@ function sendTrigger() {
     if (!state.connected) {
         addLog('✗ Cannot send trigger: Not connected', 'error');
         updateStatus('error', 'Not Connected');
+        alert('ERROR: Not connected to server! Check connection status.');
         return;
     }
     
@@ -342,10 +344,14 @@ function sendTrigger() {
         timestamp: getCurrentTimestamp()
     };
     
-    console.log('Sending geofence trigger:', payload);
+    console.log('🚨 SENDING TRIGGER:', payload);
+    console.log('Socket connected:', state.socket && state.socket.connected);
+    console.log('Socket ID:', state.socket ? state.socket.id : 'NO SOCKET');
+    
     state.socket.emit('geofence_trigger', payload);
     
     addLog(`→ Sent trigger: ${vehicleId} → ${junctionId}`, 'info');
+    addLog(`Socket ID: ${state.socket.id}`, 'info');
     updateStatus('sending', 'Sending Trigger...');
     
     // Update last trigger time for debouncing
@@ -403,13 +409,13 @@ function checkGeofence(position) {
         const now = getCurrentTimestamp();
         const timeSinceLastTrigger = now - state.lastTriggerTime;
         
-        console.log(`🎯 INSIDE GEOFENCE! Distance: ${distance.toFixed(2)}m`);
+        console.log(`🎯 ENTERED GEOFENCE! Distance: ${distance.toFixed(2)}m`);
         
         if (timeSinceLastTrigger >= CONFIG.geofenceTriggerDebounce) {
             // Trigger allowed
             addLog(`🎯 ENTERED GEOFENCE! Distance: ${distance.toFixed(2)}m`, 'success');
-            addLog(`🚨 Sending emergency trigger...`, 'warning');
-            elements.geofenceStatus.textContent = '✓ Inside geofence - Triggering!';
+            addLog(`🚨 Emergency active - Signal stays GREEN while inside!`, 'warning');
+            elements.geofenceStatus.textContent = '✓ Inside geofence - EMERGENCY MODE';
             elements.geofenceStatus.className = 'geofence-status inside';
             sendTrigger();
         } else {
@@ -420,17 +426,43 @@ function checkGeofence(position) {
         
         state.wasInsideGeofence = true;
     } else if (!insideGeofence && state.wasInsideGeofence) {
-        // Exiting geofence
-        console.log(`↩ Exited geofence. Distance: ${distance.toFixed(2)}m`);
-        addLog(`↩ Exited geofence zone. Distance: ${distance.toFixed(2)}m`, 'info');
+        // Exiting geofence - notify server to end emergency
+        console.log(`↩ EXITED GEOFENCE! Distance: ${distance.toFixed(2)}m`);
+        addLog(`↩ EXITED geofence - Ending emergency mode`, 'info');
         elements.geofenceStatus.textContent = 'Outside geofence';
         elements.geofenceStatus.className = 'geofence-status outside';
+        
+        // Send exit notification to server
+        if (state.connected) {
+            state.socket.emit('geofence_exit', {
+                junctionId: state.currentJunction,
+                vehicleId: state.vehicleId,
+                timestamp: getCurrentTimestamp()
+            });
+            addLog(`→ Sent exit notification to server`, 'info');
+        }
+        
         state.wasInsideGeofence = false;
     } else if (insideGeofence) {
-        // Still inside
-        elements.geofenceStatus.textContent = `✓ INSIDE geofence (${distance.toFixed(2)}m)`;
+        // Still inside - keep emergency active
+        elements.geofenceStatus.textContent = `✓ INSIDE geofence (${distance.toFixed(2)}m) - GREEN ACTIVE`;
         elements.geofenceStatus.className = 'geofence-status inside';
-        console.log(`✓ Still inside: ${distance.toFixed(2)}m`);
+        console.log(`✓ Still inside: ${distance.toFixed(2)}m - maintaining emergency`);
+        
+        // Send heartbeat every 2 seconds to keep emergency active
+        const now = getCurrentTimestamp();
+        if (now - state.lastLocationUpdate > 2000) {
+            if (state.connected && state.socket) {
+                state.socket.emit('geofence_heartbeat', {
+                    junctionId: state.currentJunction,
+                    vehicleId: state.vehicleId,
+                    distance: distance,
+                    timestamp: now
+                });
+                state.lastLocationUpdate = now;
+                console.log(`💓 Heartbeat sent - still inside at ${distance.toFixed(2)}m`);
+            }
+        }
     } else {
         // Still outside
         elements.geofenceStatus.textContent = `Outside geofence (${distanceText})`;

@@ -234,24 +234,24 @@ def emergency_override(junction_id, vehicle_id):
         junction["signals"]["west"]["state"] = "RED"
         
         logger.info(f"Junction {junction_id}: EMERGENCY MODE - Vehicle {vehicle_id}")
+        logger.info(f"Broadcasting emergency state to all clients...")
         
         # Broadcast emergency state
-        socketio.emit('junction_update', {
+        broadcast_data = {
             "junctionId": junction_id,
             "signals": junction["signals"],
             "mode": "emergency",
             "triggeredBy": vehicle_id,
             "timestamp": current_time_ms()
-        })
+        }
         
-        # Return to auto cycle after emergency duration
-        def end_emergency():
-            logger.info(f"Junction {junction_id}: Ending emergency mode, returning to auto cycle")
-            start_auto_cycle(junction_id)
+        logger.info(f"Broadcast data: {broadcast_data}")
+        socketio.emit('junction_update', broadcast_data, broadcast=True)
+        logger.info(f"✓ Emergency broadcast sent")
         
-        timer = threading.Timer(EMERGENCY_DURATION_MS / 1000.0, end_emergency)
-        timer.start()
-        active_timers[f"{junction_id}_emergency"] = timer
+        # Emergency mode stays active until vehicle exits geofence
+        # No automatic timer - will only end when geofence_exit received
+        logger.info(f"Emergency mode ACTIVE - waiting for vehicle to exit geofence...")
         
         return True
 
@@ -498,6 +498,71 @@ def handle_request_state():
             "junctions": junctions_copy,
             "success": True
         })
+
+
+@socketio.on('geofence_exit')
+def handle_geofence_exit(data):
+    """
+    Handle vehicle exiting geofence - end emergency mode
+    
+    Expected payload:
+    {
+        "junctionId": "junction1",
+        "vehicleId": "veh123",
+        "timestamp": 1690000000000
+    }
+    """
+    try:
+        junction_id = data.get('junctionId')
+        vehicle_id = data.get('vehicleId')
+        
+        logger.info(f"Vehicle {vehicle_id} EXITED geofence at junction {junction_id}")
+        
+        if not junction_id:
+            emit('error', {"message": "junctionId required"})
+            return
+        
+        if junction_id not in junctions:
+            emit('error', {"message": f"Unknown junction: {junction_id}"})
+            return
+        
+        with state_lock:
+            junction = junctions[junction_id]
+            if junction.get("mode") == "emergency":
+                logger.info(f"Ending emergency mode for {junction_id} - vehicle exited")
+                # Return to auto cycle
+                start_auto_cycle(junction_id)
+            else:
+                logger.info(f"Junction {junction_id} not in emergency mode, ignoring exit")
+        
+    except Exception as e:
+        logger.error(f"Error handling geofence_exit: {str(e)}")
+        emit('error', {"message": str(e)})
+
+
+@socketio.on('geofence_heartbeat')
+def handle_geofence_heartbeat(data):
+    """
+    Handle heartbeat from vehicle still inside geofence
+    Keeps emergency mode active
+    
+    Expected payload:
+    {
+        "junctionId": "junction1",
+        "vehicleId": "veh123",
+        "distance": 3.5,
+        "timestamp": 1690000000000
+    }
+    """
+    junction_id = data.get('junctionId')
+    vehicle_id = data.get('vehicleId')
+    distance = data.get('distance')
+    
+    # Log heartbeat (can be verbose, so only log every few seconds)
+    logger.debug(f"Heartbeat from {vehicle_id} at junction {junction_id}: {distance:.2f}m")
+    
+    # Emergency mode is already active, just acknowledge
+    # No action needed - mode stays emergency until explicit exit
 
 
 @socketio.on('ping')

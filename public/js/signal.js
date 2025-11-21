@@ -202,10 +202,12 @@ function initSocket() {
     
     // Connection events
     state.socket.on('connect', () => {
-        console.log('Connected to server');
+        console.log('✓ CONNECTED TO SERVER');
+        console.log('Socket ID:', state.socket.id);
         updateConnectionStatus(true);
         state.reconnectAttempts = 0;
         addLog('✓ Connected to junction server', 'success');
+        addLog(`Socket ID: ${state.socket.id}`, 'info');
         
         // Request current state
         state.socket.emit('request_state');
@@ -266,19 +268,30 @@ function initSocket() {
     
     // Junction update events
     state.socket.on('junction_update', (data) => {
-        console.log('Junction update:', data);
+        console.log('🚨 JUNCTION UPDATE RECEIVED:', data);
+        console.log('Current junction:', state.currentJunction);
+        console.log('Data junction:', data.junctionId);
+        console.log('Match:', data.junctionId === state.currentJunction);
         
-        if (data.junctionId !== state.currentJunction) return;
+        if (data.junctionId !== state.currentJunction) {
+            console.warn('Junction ID mismatch - ignoring update');
+            return;
+        }
+        
+        console.log('✓ Processing junction update');
         
         // Update all signals
         updateAllSignals(data.signals);
         
         // Update mode
         if (data.mode) {
+            console.log('Updating mode to:', data.mode);
             updateMode(data.mode, data.current_signal);
             
             if (data.mode === 'emergency') {
+                console.log('🚨 EMERGENCY MODE ACTIVATED!');
                 showAlert(`🚑 Emergency Vehicle: ${data.triggeredBy || 'Approaching'}`);
+                addLog(`🚨 EMERGENCY MODE ACTIVATED by ${data.triggeredBy}`, 'warning');
             }
         }
         
