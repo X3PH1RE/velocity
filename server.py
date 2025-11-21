@@ -265,8 +265,8 @@ def emergency_override(junction_id, vehicle_id):
 
 @app.route('/')
 def index():
-    """Redirect to vehicle page"""
-    return send_from_directory('public', 'vehicle.html')
+    """Serve landing page"""
+    return send_from_directory('public', 'index.html')
 
 
 @app.route('/vehicle.html')

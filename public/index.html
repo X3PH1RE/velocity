@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Velocity - Smart Traffic System</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .landing-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        }
+
+        .landing-container {
+            max-width: 800px;
+            padding: var(--spacing-xl);
+            text-align: center;
+        }
+
+        .landing-logo {
+            font-size: 6rem;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .landing-title {
+            font-size: 3rem;
+            color: white;
+            margin-bottom: var(--spacing-md);
+            font-weight: 700;
+        }
+
+        .landing-subtitle {
+            font-size: 1.25rem;
+            color: var(--color-text-lighter);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .interface-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--spacing-xl);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .interface-card {
+            background: var(--color-dark-surface);
+            border: 2px solid var(--color-dark-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            transition: all var(--transition-base);
+            cursor: pointer;
+            text-decoration: none;
+            display: block;
+        }
+
+        .interface-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-xl);
+            border-color: var(--color-primary);
+        }
+
+        .card-icon {
+            font-size: 4rem;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            color: white;
+            font-weight: 700;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .card-description {
+            font-size: 1rem;
+            color: var(--color-text-lighter);
+            line-height: 1.6;
+        }
+
+        .card-badge {
+            display: inline-block;
+            padding: var(--spacing-xs) var(--spacing-md);
+            background: var(--color-primary);
+            color: white;
+            border-radius: var(--radius-full);
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-top: var(--spacing-md);
+        }
+
+        .features {
+            background: var(--color-dark-surface);
+            border: 2px solid var(--color-dark-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            margin-top: var(--spacing-xl);
+        }
+
+        .features-title {
+            font-size: 1.5rem;
+            color: white;
+            margin-bottom: var(--spacing-md);
+            font-weight: 700;
+        }
+
+        .features-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-md);
+            text-align: left;
+        }
+
+        .feature-item {
+            color: var(--color-text-lighter);
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .feature-icon {
+            font-size: 1.25rem;
+        }
+
+        @media (max-width: 768px) {
+            .landing-title {
+                font-size: 2rem;
+            }
+
+            .landing-logo {
+                font-size: 4rem;
+            }
+
+            .interface-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body class="landing-page">
+    <div class="landing-container">
+        <div class="landing-logo">🚦</div>
+        <h1 class="landing-title">Velocity</h1>
+        <p class="landing-subtitle">Smart Traffic Management System</p>
+
+        <div class="interface-cards">
+            <!-- Traffic Signal Dashboard -->
+            <a href="/signal.html" class="interface-card">
+                <div class="card-icon">🚦</div>
+                <h2 class="card-title">Junction Dashboard</h2>
+                <p class="card-description">
+                    View the 4-way traffic junction with auto-cycling signals. 
+                    Perfect for laptops and desktop displays.
+                </p>
+                <span class="card-badge">For Laptops</span>
+            </a>
+
+            <!-- Emergency Vehicle Simulator -->
+            <a href="/vehicle.html" class="interface-card">
+                <div class="card-icon">🚑</div>
+                <h2 class="card-title">Emergency Vehicle</h2>
+                <p class="card-description">
+                    Simulate an emergency vehicle with GPS tracking and geofence detection.
+                    Optimized for mobile devices.
+                </p>
+                <span class="card-badge">For Mobile</span>
+            </a>
+        </div>
+
+        <div class="features">
+            <h3 class="features-title">✨ Features</h3>
+            <div class="features-list">
+                <div class="feature-item">
+                    <span class="feature-icon">🔄</span>
+                    <span>Auto-cycling signals (20s)</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🚨</span>
+                    <span>Emergency priority mode</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">📍</span>
+                    <span>GPS geofence detection</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">⚡</span>
+                    <span>Real-time WebSocket sync</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">📱</span>
+                    <span>Mobile-first design</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🎯</span>
+                    <span>4-way junction layout</span>
+                </div>
+            </div>
+        </div>
+
+        <footer style="margin-top: var(--spacing-xl); color: var(--color-text-lighter); font-size: 0.875rem;">
+            <p>Smart City Innovation • Emergency Vehicle Priority System</p>
+        </footer>
+    </div>
+</body>
+</html>
+
