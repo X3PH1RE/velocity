@@ -27,7 +27,7 @@ JUNCTIONS_CONFIG = {
         "name": "Dynamic Junction",
         "lat": 40.7580,  # Default - will be updated by laptop GPS
         "lng": -73.9855,  # Default - will be updated by laptop GPS
-        "geofence_radius_m": 1,  # 1 meter for device-to-device proximity
+        "geofence_radius_m": 5,  # 1 meter for device-to-device proximity
         "last_updated": None
     }
 }
