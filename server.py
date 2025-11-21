@@ -177,13 +177,28 @@ def cycle_signals(junction_id):
 
 def start_auto_cycle(junction_id):
     """Start automatic signal cycling for a junction"""
+    logger.info(f"🔄 start_auto_cycle called for {junction_id}")
+    
+    # Cancel any existing timers first
+    if f"{junction_id}_emergency" in active_timers:
+        logger.info(f"Cancelling emergency timer...")
+        active_timers[f"{junction_id}_emergency"].cancel()
+        del active_timers[f"{junction_id}_emergency"]
+    
+    if f"{junction_id}_cycle" in active_timers:
+        logger.info(f"Cancelling existing cycle timer...")
+        active_timers[f"{junction_id}_cycle"].cancel()
+        del active_timers[f"{junction_id}_cycle"]
+    
     with state_lock:
         if junction_id not in junctions:
+            logger.error(f"Junction {junction_id} not found!")
             return
         
         junction = junctions[junction_id]
         junction["mode"] = "auto_cycle"
         junction["emergency_active"] = False
+        junction["triggered_by"] = None
         junction["current_cycle_signal"] = "north"
         
         # Set north to GREEN, others to RED
@@ -192,21 +207,27 @@ def start_auto_cycle(junction_id):
         junction["signals"]["east"]["state"] = "RED"
         junction["signals"]["west"]["state"] = "RED"
         
-        logger.info(f"Junction {junction_id}: Starting auto cycle mode")
-        
-        # Broadcast update
-        socketio.emit('junction_update', {
-            "junctionId": junction_id,
-            "signals": junction["signals"],
-            "mode": junction["mode"],
-            "current_signal": "north",
-            "timestamp": current_time_ms()
-        })
-        
-        # Start cycling
-        timer = threading.Timer(SIGNAL_GREEN_TIME_MS / 1000.0, cycle_signals, args=[junction_id])
-        timer.start()
-        active_timers[f"{junction_id}_cycle"] = timer
+        logger.info(f"✓ Junction {junction_id}: AUTO CYCLE MODE started")
+        logger.info(f"✓ North signal GREEN, others RED")
+    
+    # Broadcast update to ALL clients
+    broadcast_data = {
+        "junctionId": junction_id,
+        "signals": junctions[junction_id]["signals"],
+        "mode": "auto_cycle",
+        "current_signal": "north",
+        "timestamp": current_time_ms()
+    }
+    logger.info(f"📡 Broadcasting auto cycle mode: {broadcast_data}")
+    socketio.emit('junction_update', broadcast_data)
+    logger.info(f"✓ Broadcast sent")
+    
+    # Start cycling
+    logger.info(f"⏰ Starting cycle timer ({SIGNAL_GREEN_TIME_MS}ms)")
+    timer = threading.Timer(SIGNAL_GREEN_TIME_MS / 1000.0, cycle_signals, args=[junction_id])
+    timer.start()
+    active_timers[f"{junction_id}_cycle"] = timer
+    logger.info(f"✓ Auto cycle fully initialized")
 
 
 def emergency_override(junction_id, vehicle_id):
@@ -513,30 +534,41 @@ def handle_geofence_exit(data):
     }
     """
     try:
+        logger.info(f"🚨 GEOFENCE EXIT EVENT RECEIVED")
+        logger.info(f"Exit data: {data}")
+        
         junction_id = data.get('junctionId')
         vehicle_id = data.get('vehicleId')
         
-        logger.info(f"Vehicle {vehicle_id} EXITED geofence at junction {junction_id}")
+        logger.info(f"✓ Vehicle {vehicle_id} EXITED geofence at junction {junction_id}")
         
         if not junction_id:
+            logger.error("Missing junctionId in exit event")
             emit('error', {"message": "junctionId required"})
             return
         
         if junction_id not in junctions:
+            logger.error(f"Unknown junction: {junction_id}")
             emit('error', {"message": f"Unknown junction: {junction_id}"})
             return
         
-        with state_lock:
-            junction = junctions[junction_id]
-            if junction.get("mode") == "emergency":
-                logger.info(f"Ending emergency mode for {junction_id} - vehicle exited")
-                # Return to auto cycle
-                start_auto_cycle(junction_id)
-            else:
-                logger.info(f"Junction {junction_id} not in emergency mode, ignoring exit")
+        junction = junctions[junction_id]
+        current_mode = junction.get("mode")
+        logger.info(f"Current mode: {current_mode}")
+        
+        if current_mode == "emergency":
+            logger.info(f"🔄 ENDING EMERGENCY MODE for {junction_id}")
+            logger.info(f"🔄 RETURNING TO AUTO CYCLE...")
+            # Return to auto cycle
+            start_auto_cycle(junction_id)
+            logger.info(f"✓ Auto cycle restarted successfully")
+        else:
+            logger.warning(f"Junction {junction_id} not in emergency mode (mode={current_mode}), ignoring exit")
         
     except Exception as e:
-        logger.error(f"Error handling geofence_exit: {str(e)}")
+        logger.error(f"❌ Error handling geofence_exit: {str(e)}")
+        import traceback
+        traceback.print_exc()
         emit('error', {"message": str(e)})
 
 

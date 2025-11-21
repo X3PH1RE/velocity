@@ -428,18 +428,25 @@ function checkGeofence(position) {
     } else if (!insideGeofence && state.wasInsideGeofence) {
         // Exiting geofence - notify server to end emergency
         console.log(`↩ EXITED GEOFENCE! Distance: ${distance.toFixed(2)}m`);
-        addLog(`↩ EXITED geofence - Ending emergency mode`, 'info');
-        elements.geofenceStatus.textContent = 'Outside geofence';
+        console.log(`🚨 SENDING EXIT NOTIFICATION TO SERVER`);
+        addLog(`↩ EXITED geofence - Ending emergency mode`, 'warning');
+        elements.geofenceStatus.textContent = 'Outside geofence - Sent exit notification';
         elements.geofenceStatus.className = 'geofence-status outside';
         
         // Send exit notification to server
-        if (state.connected) {
-            state.socket.emit('geofence_exit', {
+        if (state.connected && state.socket) {
+            const exitPayload = {
                 junctionId: state.currentJunction,
-                vehicleId: state.vehicleId,
+                vehicleId: state.vehicleId || 'unknown',
                 timestamp: getCurrentTimestamp()
-            });
-            addLog(`→ Sent exit notification to server`, 'info');
+            };
+            console.log('Exit payload:', exitPayload);
+            state.socket.emit('geofence_exit', exitPayload);
+            addLog(`→ EXIT notification sent to server`, 'success');
+            console.log('✓ Exit notification sent via socket');
+        } else {
+            addLog(`✗ Cannot send exit - not connected!`, 'error');
+            console.error('Not connected - cannot send exit notification');
         }
         
         state.wasInsideGeofence = false;
