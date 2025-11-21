@@ -453,6 +453,37 @@ select:focus {
     color: var(--color-text);
 }
 
+.debug-info {
+    margin-top: var(--spacing-lg);
+    padding: var(--spacing-md);
+    background: #1a1a1a;
+    border: 2px solid var(--color-warning);
+    border-radius: var(--radius-md);
+    font-family: 'Monaco', 'Courier New', monospace;
+    font-size: 0.875rem;
+}
+
+.debug-info h4 {
+    color: var(--color-warning);
+    margin-bottom: var(--spacing-md);
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+.debug-info p {
+    margin-bottom: var(--spacing-sm);
+    color: var(--color-text-lighter);
+}
+
+.debug-info strong {
+    color: var(--color-text);
+}
+
+.debug-info span {
+    color: var(--color-success);
+    font-weight: bold;
+}
+
 /* ==============================================================================
    Map
    ============================================================================== */

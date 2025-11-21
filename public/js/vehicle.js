@@ -22,8 +22,8 @@ const CONFIG = {
     },
     
     // GPS tracking settings
-    gpsUpdateInterval: 2000,  // milliseconds
-    geofenceTriggerDebounce: 5000,  // Don't re-trigger within 5 seconds
+    gpsUpdateInterval: 1000,  // milliseconds (faster updates)
+    geofenceTriggerDebounce: 3000,  // Don't re-trigger within 3 seconds (reduced)
     
     // Map settings
     mapZoom: 16,
@@ -94,6 +94,13 @@ const elements = {
     stopGpsBtn: document.getElementById('stopGpsBtn'),
     yourLocation: document.getElementById('yourLocation'),
     junctionLocation: document.getElementById('junctionLocation'),
+    geofenceRadius: document.getElementById('geofenceRadius'),
+    
+    // Debug elements
+    debugDistance: document.getElementById('debugDistance'),
+    debugInside: document.getElementById('debugInside'),
+    debugLastUpdate: document.getElementById('debugLastUpdate'),
+    debugAccuracy: document.getElementById('debugAccuracy'),
     
     // Map
     mapContainer: document.getElementById('map'),
@@ -283,9 +290,12 @@ function initSocket() {
             
             addLog(`📍 Laptop location updated: ${data.lat.toFixed(6)}, ${data.lng.toFixed(6)}`, 'info');
             
-            // Update junction location display
-            const junction = CONFIG.junctions[state.currentJunction];
-            elements.junctionLocation.textContent = `${junction.lat.toFixed(6)}, ${junction.lng.toFixed(6)} (radius: ${junction.geofenceRadius}m)`;
+        // Update junction location display
+        const junction = CONFIG.junctions[state.currentJunction];
+        elements.junctionLocation.textContent = `${junction.lat.toFixed(6)}, ${junction.lng.toFixed(6)}`;
+        if (elements.geofenceRadius) {
+            elements.geofenceRadius.textContent = `${junction.geofenceRadius}m (trigger when within this distance)`;
+        }
             
             // Update map if available
             if (state.map && state.junctionMarker) {
@@ -351,7 +361,10 @@ function sendTrigger() {
  */
 function checkGeofence(position) {
     const junction = CONFIG.junctions[state.currentJunction];
-    if (!junction) return;
+    if (!junction) {
+        console.warn('No junction config found');
+        return;
+    }
     
     const distance = haversineDistance(
         position.coords.latitude,
@@ -360,10 +373,29 @@ function checkGeofence(position) {
         junction.lng
     );
     
-    // Update distance display
-    elements.distanceDisplay.textContent = `Distance to junction: ${Math.round(distance)}m`;
+    // Update distance display with more precision
+    const distanceText = distance < 10 
+        ? `${distance.toFixed(2)}m` 
+        : `${Math.round(distance)}m`;
+    
+    elements.distanceDisplay.textContent = `Distance to junction: ${distanceText}`;
+    
+    // Log distance for debugging
+    console.log(`📏 Distance: ${distance.toFixed(2)}m | Threshold: ${junction.geofenceRadius}m | Inside: ${distance <= junction.geofenceRadius}`);
+    
+    // Update debug display
+    if (elements.debugDistance) {
+        elements.debugDistance.textContent = `${distance.toFixed(2)}m`;
+        elements.debugDistance.style.color = distance <= junction.geofenceRadius ? '#22c55e' : '#64748b';
+    }
     
     const insideGeofence = distance <= junction.geofenceRadius;
+    
+    if (elements.debugInside) {
+        elements.debugInside.textContent = insideGeofence ? '✓ YES' : '✗ NO';
+        elements.debugInside.style.color = insideGeofence ? '#22c55e' : '#ef4444';
+        elements.debugInside.style.fontWeight = 'bold';
+    }
     
     // Check for geofence entry (transition from outside to inside)
     if (insideGeofence && !state.wasInsideGeofence) {
@@ -371,37 +403,38 @@ function checkGeofence(position) {
         const now = getCurrentTimestamp();
         const timeSinceLastTrigger = now - state.lastTriggerTime;
         
+        console.log(`🎯 INSIDE GEOFENCE! Distance: ${distance.toFixed(2)}m`);
+        
         if (timeSinceLastTrigger >= CONFIG.geofenceTriggerDebounce) {
             // Trigger allowed
-            addLog(`🎯 Entered geofence zone! Distance: ${Math.round(distance)}m`, 'success');
+            addLog(`🎯 ENTERED GEOFENCE! Distance: ${distance.toFixed(2)}m`, 'success');
+            addLog(`🚨 Sending emergency trigger...`, 'warning');
             elements.geofenceStatus.textContent = '✓ Inside geofence - Triggering!';
             elements.geofenceStatus.className = 'geofence-status inside';
             sendTrigger();
         } else {
-            // Debounce - too soon since last trigger
-            addLog(`⏱ Inside geofence but debounced (${Math.round(timeSinceLastTrigger/1000)}s since last trigger)`, 'warning');
+            const waitTime = Math.ceil((CONFIG.geofenceTriggerDebounce - timeSinceLastTrigger) / 1000);
+            addLog(`⏱ Inside geofence but debounced (wait ${waitTime}s)`, 'warning');
+            console.log(`⏱ Debounced: ${timeSinceLastTrigger}ms since last trigger`);
         }
         
         state.wasInsideGeofence = true;
     } else if (!insideGeofence && state.wasInsideGeofence) {
         // Exiting geofence
-        addLog(`↩ Exited geofence zone. Distance: ${Math.round(distance)}m`, 'info');
+        console.log(`↩ Exited geofence. Distance: ${distance.toFixed(2)}m`);
+        addLog(`↩ Exited geofence zone. Distance: ${distance.toFixed(2)}m`, 'info');
         elements.geofenceStatus.textContent = 'Outside geofence';
         elements.geofenceStatus.className = 'geofence-status outside';
         state.wasInsideGeofence = false;
     } else if (insideGeofence) {
         // Still inside
-        elements.geofenceStatus.textContent = `✓ Inside geofence (${Math.round(distance)}m)`;
+        elements.geofenceStatus.textContent = `✓ INSIDE geofence (${distance.toFixed(2)}m)`;
         elements.geofenceStatus.className = 'geofence-status inside';
+        console.log(`✓ Still inside: ${distance.toFixed(2)}m`);
     } else {
         // Still outside
-        elements.geofenceStatus.textContent = `Outside geofence (${Math.round(distance)}m)`;
+        elements.geofenceStatus.textContent = `Outside geofence (${distanceText})`;
         elements.geofenceStatus.className = 'geofence-status outside';
-    }
-    
-    // Update map if available
-    if (state.map && state.vehicleMarker) {
-        state.vehicleMarker.setLatLng([position.coords.latitude, position.coords.longitude]);
     }
 }
 
@@ -419,9 +452,24 @@ function handleGpsPosition(position) {
     elements.gpsStatus.textContent = `✓ GPS active (accuracy: ±${accuracy}m)`;
     elements.gpsStatus.className = 'gps-status active';
     
+    // Update debug info
+    if (elements.debugLastUpdate) {
+        elements.debugLastUpdate.textContent = new Date().toLocaleTimeString();
+    }
+    if (elements.debugAccuracy) {
+        elements.debugAccuracy.textContent = `±${accuracy}m`;
+    }
+    
+    console.log(`📍 GPS Update: ${lat}, ${lng} ±${accuracy}m`);
+    
     updateStatus('tracking', 'GPS Tracking Active');
     
-    // Check geofence
+    // Update map position
+    if (state.map && state.vehicleMarker) {
+        state.vehicleMarker.setLatLng([position.coords.latitude, position.coords.longitude]);
+    }
+    
+    // Check geofence immediately on every update
     checkGeofence(position);
 }
 
@@ -486,17 +534,29 @@ function startGpsTracking() {
     addLog('📱 If on phone via HTTP: GPS won\'t work. Use Manual mode or deploy to get HTTPS.', 'warning');
     elements.gpsStatus.textContent = 'Starting GPS...';
     
-    // Request GPS with more lenient settings
+    // Request GPS with optimal settings for real-time tracking
     const options = {
-        enableHighAccuracy: false,  // Changed to false for compatibility
-        timeout: 30000,  // Increased to 30 seconds
-        maximumAge: 60000  // Accept cached position
+        enableHighAccuracy: true,  // High accuracy for better distance calc
+        timeout: 30000,  // 30 seconds timeout
+        maximumAge: 0  // Don't use cached position - need real-time updates!
     };
+    
+    console.log('🛰️ Starting GPS watch with high accuracy...');
     
     state.gpsWatchId = navigator.geolocation.watchPosition(
         handleGpsPosition,
         handleGpsError,
         options
+    );
+    
+    // Also do an immediate position check
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            console.log('✓ Got initial GPS position');
+            handleGpsPosition(pos);
+        },
+        (err) => console.warn('Initial GPS position failed:', err),
+        { enableHighAccuracy: true, timeout: 10000 }
     );
     
     state.gpsActive = true;
