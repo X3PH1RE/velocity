@@ -516,5 +516,7 @@ if __name__ == '__main__':
     logger.info("=" * 60)
     
     # Run with SocketIO
-    socketio.run(app, host=HOST, port=PORT, debug=False)
+    # allow_unsafe_werkzeug=True is fine for development/testing
+    # For production on Railway/Zeabur, they use proper WSGI servers
+    socketio.run(app, host=HOST, port=PORT, debug=False, allow_unsafe_werkzeug=True)
 
