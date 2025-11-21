@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Velocity - Emergency Vehicle Simulator</title>
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Leaflet for OpenStreetMap -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
+          crossorigin="anonymous"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
+            crossorigin="anonymous"></script>
+    
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js" 
+            integrity="sha384-c79GN5VsunZvi+Q/WObgk2in0CbZsHnjEqvFxC5DxHn9lTfNce2WW6h2pH6u/kF+" 
+            crossorigin="anonymous"></script>
+</head>
+<body class="vehicle-page">
+    <div class="container">
+        <header>
+            <h1>🚑 Emergency Vehicle Simulator</h1>
+            <p class="subtitle">Velocity Testbed - Mobile Interface</p>
+        </header>
+
+        <!-- Mode Selection -->
+        <section class="mode-section">
+            <h2>Mode</h2>
+            <div class="mode-toggle">
+                <button id="manualModeBtn" class="mode-btn active" aria-label="Manual mode">
+                    Manual
+                </button>
+                <button id="autoModeBtn" class="mode-btn" aria-label="Auto GPS mode">
+                    Auto (GPS)
+                </button>
+            </div>
+        </section>
+
+        <!-- Vehicle ID Input -->
+        <section class="input-section">
+            <label for="vehicleIdInput">Vehicle ID</label>
+            <input type="text" id="vehicleIdInput" placeholder="e.g., AMBULANCE-001" value="">
+        </section>
+
+        <!-- Junction Selection -->
+        <section class="junction-section">
+            <label for="junctionSelect">Target Junction</label>
+            <select id="junctionSelect">
+                <option value="junction1">Junction 1 - Main St & 5th Ave</option>
+            </select>
+        </section>
+
+        <!-- Status Display -->
+        <section class="status-section" aria-live="polite" aria-atomic="true">
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <div class="status-text" id="statusText">Disconnected</div>
+            </div>
+            <div class="distance-display" id="distanceDisplay"></div>
+        </section>
+
+        <!-- Manual Mode Controls -->
+        <section id="manualControls" class="controls-section">
+            <button id="triggerBtn" class="trigger-btn" aria-label="Send trigger to turn traffic light green">
+                Send Trigger
+            </button>
+            <p class="help-text">Tap to simulate entering the geofence zone</p>
+        </section>
+
+        <!-- Auto Mode Controls -->
+        <section id="autoControls" class="controls-section hidden">
+            <div class="auto-status">
+                <p id="gpsStatus" class="gps-status">Initializing GPS...</p>
+                <p id="geofenceStatus" class="geofence-status"></p>
+            </div>
+            <button id="startGpsBtn" class="secondary-btn">Start GPS Tracking</button>
+            <button id="stopGpsBtn" class="secondary-btn hidden">Stop GPS Tracking</button>
+            <div class="gps-info">
+                <p><strong>Your Location:</strong></p>
+                <p id="yourLocation">Waiting for GPS...</p>
+                <p><strong>Junction Location:</strong></p>
+                <p id="junctionLocation">-</p>
+            </div>
+        </section>
+
+        <!-- Map Display (Optional) -->
+        <section class="map-section">
+            <h3>Map View</h3>
+            <div id="map" class="map-container"></div>
+            <p class="help-text">Map requires internet connection for tiles</p>
+        </section>
+
+        <!-- Event Log -->
+        <section class="log-section">
+            <h3>Event Log</h3>
+            <div id="eventLog" class="event-log" aria-live="polite"></div>
+            <button id="clearLogBtn" class="small-btn">Clear Log</button>
+        </section>
+
+        <!-- Connection Status Footer -->
+        <footer>
+            <div class="connection-status">
+                <span id="connectionStatus">●</span>
+                <span id="connectionText">Connecting...</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Load vehicle script -->
+    <script src="js/vehicle.js"></script>
+</body>
+</html>
+
+

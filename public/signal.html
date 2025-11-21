@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Velocity - Junction Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js" 
+            integrity="sha384-c79GN5VsunZvi+Q/WObgk2in0CbZsHnjEqvFxC5DxHn9lTfNce2WW6h2pH6u/kF+" 
+            crossorigin="anonymous"></script>
+</head>
+<body class="signal-page">
+    <div class="container">
+        <header>
+            <h1>🚦 4-Way Junction Dashboard</h1>
+            <p class="subtitle">Velocity Testbed - Auto Cycling Traffic Signals</p>
+        </header>
+
+        <!-- Mode Status -->
+        <section class="mode-status">
+            <div class="status-badge" id="modeBadge">
+                <span class="badge-icon">🔄</span>
+                <span id="modeText">Auto Cycle Mode</span>
+            </div>
+            <div class="cycle-info" id="cycleInfo">
+                Current: <strong id="currentSignal">North</strong> | 
+                Cycle: 20s (4s per signal)
+            </div>
+        </section>
+
+        <!-- Junction Layout -->
+        <section class="junction-layout">
+            <!-- North Signal (Main/Bigger) -->
+            <div class="signal-container signal-north">
+                <div class="signal-label">NORTH (Main)</div>
+                <div class="traffic-light main-signal" id="signalNorth">
+                    <div class="light red" data-signal="north"></div>
+                    <div class="light yellow" data-signal="north"></div>
+                    <div class="light green" data-signal="north"></div>
+                </div>
+            </div>
+
+            <!-- Center (Junction) -->
+            <div class="junction-center">
+                <div class="road horizontal"></div>
+                <div class="road vertical"></div>
+                <div class="junction-box">
+                    <div class="junction-icon">✛</div>
+                </div>
+            </div>
+
+            <!-- South Signal -->
+            <div class="signal-container signal-south">
+                <div class="signal-label">SOUTH</div>
+                <div class="traffic-light" id="signalSouth">
+                    <div class="light red" data-signal="south"></div>
+                    <div class="light yellow" data-signal="south"></div>
+                    <div class="light green" data-signal="south"></div>
+                </div>
+            </div>
+
+            <!-- East Signal -->
+            <div class="signal-container signal-east">
+                <div class="signal-label">EAST</div>
+                <div class="traffic-light" id="signalEast">
+                    <div class="light red" data-signal="east"></div>
+                    <div class="light yellow" data-signal="east"></div>
+                    <div class="light green" data-signal="east"></div>
+                </div>
+            </div>
+
+            <!-- West Signal -->
+            <div class="signal-container signal-west">
+                <div class="signal-label">WEST</div>
+                <div class="traffic-light" id="signalWest">
+                    <div class="light red" data-signal="west"></div>
+                    <div class="light yellow" data-signal="west"></div>
+                    <div class="light green" data-signal="west"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Emergency Alert -->
+        <section class="alert-banner hidden" id="alertBanner" role="alert">
+            <div class="alert-content">
+                <span class="alert-icon">🚑</span>
+                <span class="alert-text" id="alertText">Emergency Vehicle Detected!</span>
+            </div>
+        </section>
+
+        <!-- Controls -->
+        <section class="controls">
+            <h3>Manual Controls</h3>
+            <div class="control-buttons">
+                <button id="triggerEmergencyBtn" class="control-btn emergency-btn">
+                    🚨 Trigger Emergency
+                </button>
+                <button id="resumeAutoBtn" class="control-btn auto-btn">
+                    🔄 Resume Auto Cycle
+                </button>
+            </div>
+        </section>
+
+        <!-- Event Log -->
+        <section class="log-section">
+            <h3>Event Log</h3>
+            <div id="eventLog" class="event-log"></div>
+            <button id="clearLogBtn" class="small-btn">Clear Log</button>
+        </section>
+
+        <!-- Connection Status Footer -->
+        <footer>
+            <div class="connection-status">
+                <span id="connectionStatus">●</span>
+                <span id="connectionText">Connecting...</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Load signal script -->
+    <script src="js/signal.js"></script>
+</body>
+</html>

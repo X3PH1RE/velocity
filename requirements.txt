@@ -1,0 +1,6 @@
+Flask==3.0.0
+Flask-SocketIO==5.3.5
+python-socketio==5.10.0
+flask-cors==4.0.0
+# eventlet==0.33.3  # Optional: Not compatible with Python 3.12+, using threading mode instead
+
