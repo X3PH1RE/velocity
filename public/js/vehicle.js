@@ -17,7 +17,7 @@ const CONFIG = {
             name: "Laptop Device (Junction)",
             lat: 40.7580,  // Will be updated by laptop GPS
             lng: -73.9855,
-            geofenceRadius: 1  // 1 meter for device-to-device proximity
+            geofenceRadius: 5  // 5 meters for device-to-device proximity
         }
     },
     
